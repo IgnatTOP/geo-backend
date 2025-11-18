@@ -73,8 +73,10 @@ func main() {
 	api.SetupRoutes(router, database, cfg)
 
 	// Запуск сервера
-	log.Printf("Сервер запущен на порту %s", cfg.Port)
-	if err := router.Run(":" + cfg.Port); err != nil {
+	// Слушаем на всех интерфейсах для работы в Docker/контейнере
+	addr := "0.0.0.0:" + cfg.Port
+	log.Printf("Сервер запущен на %s", addr)
+	if err := router.Run(addr); err != nil {
 		log.Fatalf("Ошибка запуска сервера: %v", err)
 	}
 }

@@ -20,7 +20,8 @@ RUN go build -o main .
 FROM alpine:latest
 
 # Устанавливаем необходимые пакеты
-RUN apk --no-cache add ca-certificates tzdata
+# postgresql-client нужен для SSL библиотек при работе с PostgreSQL
+RUN apk --no-cache add ca-certificates tzdata postgresql-client
 
 WORKDIR /root/
 
@@ -34,5 +35,6 @@ RUN mkdir -p uploads/images uploads/documents uploads/videos uploads/practices u
 EXPOSE 8080
 
 # Запускаем приложение
+# Используем переменную окружения PORT, если она установлена
 CMD ["./main"]
 
