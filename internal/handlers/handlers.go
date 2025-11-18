@@ -585,6 +585,16 @@ func (h *Handlers) CreateTestAttempt(c *gin.Context) {
 		return
 	}
 
+	// Проверяем, можно ли проходить тест повторно
+	if !test.AllowRetake {
+		var existingAttempt models.TestAttempt
+		if err := h.DB.Where("user_id = ? AND test_id = ?", userID, testID).First(&existingAttempt).Error; err == nil {
+			// Попытка уже существует и повторное прохождение запрещено
+			c.JSON(http.StatusForbidden, gin.H{"error": "Тест можно пройти только один раз. Повторное прохождение запрещено администратором."})
+			return
+		}
+	}
+
 	// Парсим ответы пользователя {question_id: answer_index}
 	var userAnswers map[string]interface{}
 	if err := json.Unmarshal([]byte(req.Answers), &userAnswers); err != nil {

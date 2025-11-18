@@ -13,6 +13,7 @@ type Test struct {
 	Title     string         `json:"title" gorm:"not null"`
 	Description string       `json:"description" gorm:"type:text"` // Описание теста
 	Type      string         `json:"type" gorm:"default:'single'"` // Тип: single (один правильный), multiple (несколько правильных)
+	AllowRetake bool         `json:"allow_retake" gorm:"default:false"` // Разрешить повторное прохождение
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
