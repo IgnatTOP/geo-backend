@@ -1,0 +1,81 @@
+package main
+
+import (
+	"geografi-cheb/backend/api"
+	"geografi-cheb/backend/config"
+	"geografi-cheb/backend/db"
+	_ "geografi-cheb/backend/docs" // Swagger документация
+	"geografi-cheb/backend/pkg"
+	"log"
+
+	"github.com/gin-gonic/gin"
+)
+
+// @title Учебный портал по географии API
+// @version 1.0
+// @description API для учебного портала по географии
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@geography.edu
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description JWT токен авторизации. Формат: "Bearer {token}"
+
+func main() {
+	// Загрузка конфигурации
+	cfg := config.Load()
+
+	// Инициализация базы данных
+	database, err := db.Init(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Ошибка подключения к БД: %v", err)
+	}
+
+	// Выполнение миграций
+	if err := db.RunMigrations(database); err != nil {
+		log.Fatalf("Ошибка миграций: %v", err)
+	}
+
+	// Создание администратора по умолчанию
+	pkg.InitAdmin(database)
+
+	// Настройка роутера
+	router := gin.Default()
+
+	// CORS middleware
+	router.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
+	// Статическая раздача загруженных файлов
+	router.Static("/uploads", cfg.UploadDir)
+
+	// Инициализация API
+	api.SetupRoutes(router, database, cfg)
+
+	// Запуск сервера
+	log.Printf("Сервер запущен на порту %s", cfg.Port)
+	if err := router.Run(":" + cfg.Port); err != nil {
+		log.Fatalf("Ошибка запуска сервера: %v", err)
+	}
+}
+

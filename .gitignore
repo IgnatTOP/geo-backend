@@ -1,0 +1,60 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+dist/
+
+# Go
+vendor/
+# go.sum - keep it for dependency verification
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Uploads (user uploaded files)
+uploads/
+!uploads/.gitkeep
+
+# AI and personal files
+*.ai
+.cursorrules
+.cursor/
+.copilot/
+*.copilot
+*.cursor-*
+
+# Personal credentials
+ADMIN_CREDENTIALS.md
+*.credentials
+*.secret
+
+# Temporary files
+*.tmp
+*.temp
+*.backup
+*.bak
+*.local
+
+# Cursor IDE
+.cursor/
+
