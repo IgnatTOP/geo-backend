@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Handlers содержит все обработчики запросов
+// Handlers содержит все обработчики запросов1
 type Handlers struct {
 	DB     *gorm.DB
 	Config *config.Config
