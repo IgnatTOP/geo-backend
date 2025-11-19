@@ -633,11 +633,53 @@ func (h *Handlers) GetTestAttempt(c *gin.Context) {
 	c.JSON(http.StatusOK, attempt)
 }
 
-// GetAllTestAttempts возвращает все попытки (только для админа)
+// GetAllTestAttempts возвращает все попытки с оценками (только для админа)
 func (h *Handlers) GetAllTestAttempts(c *gin.Context) {
 	var attempts []models.TestAttempt
-	h.DB.Preload("User").Preload("Test").Find(&attempts)
-	c.JSON(http.StatusOK, attempts)
+	h.DB.Preload("User").Preload("Test").Preload("Test.Lesson").Find(&attempts)
+	
+	// Загружаем оценки для каждой попытки
+	var attemptsWithGrades []map[string]interface{}
+	for _, attempt := range attempts {
+		var grade models.TestGrade
+		attemptData := map[string]interface{}{
+			"id":         attempt.ID,
+			"user_id":    attempt.UserID,
+			"test_id":    attempt.TestID,
+			"answers":    attempt.Answers,
+			"score":      attempt.Score,
+			"created_at": attempt.CreatedAt,
+			"updated_at": attempt.UpdatedAt,
+			"user":       attempt.User,
+			"test":       attempt.Test,
+		}
+		
+		// Ищем оценку для этой попытки
+		err := h.DB.Where("attempt_id = ?", attempt.ID).First(&grade).Error
+		if err == nil {
+			attemptData["grade"] = grade
+		}
+		
+		attemptsWithGrades = append(attemptsWithGrades, attemptData)
+	}
+	
+	c.JSON(http.StatusOK, attemptsWithGrades)
+}
+
+// DeleteTestAttempt удаляет попытку теста и связанные оценки (разрешить пересдачу) (только для админа)
+func (h *Handlers) DeleteTestAttempt(c *gin.Context) {
+	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	
+	// Удаляем оценки, связанные с этой попыткой
+	h.DB.Where("attempt_id = ?", id).Delete(&models.TestGrade{})
+	
+	// Удаляем саму попытку
+	if err := h.DB.Delete(&models.TestAttempt{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось удалить попытку"})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{"message": "Попытка и связанные оценки удалены. Студент может пройти тест заново"})
 }
 
 // CreateTestGradeRequest структура запроса создания оценки теста

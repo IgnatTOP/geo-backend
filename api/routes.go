@@ -119,6 +119,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 					adminTests.PUT("/:id", h.UpdateTest)
 					adminTests.DELETE("/:id", h.DeleteTest)
 					adminTests.GET("/attempts", h.GetAllTestAttempts)
+					adminTests.DELETE("/attempts/:id", h.DeleteTestAttempt)
 					adminTests.POST("/grades", h.CreateTestGrade)
 					adminTests.PUT("/grades/:id", h.UpdateTestGrade)
 					adminTests.DELETE("/grades/:id", h.DeleteTestGrade)
