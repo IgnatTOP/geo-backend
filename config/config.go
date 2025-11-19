@@ -145,7 +145,14 @@ func encodeDatabaseURLManual(databaseURL string) string {
 	username := userinfo[:colonPos]
 	password := userinfo[colonPos+1:]
 
-	// Кодируем пароль
+	// Проверяем, закодирован ли пароль уже (содержит ли % символы URL-кодирования)
+	// Если пароль уже закодирован, не кодируем его снова
+	if decodedPassword, err := url.QueryUnescape(password); err == nil && decodedPassword != password {
+		// Пароль уже закодирован, возвращаем как есть
+		return databaseURL
+	}
+
+	// Кодируем пароль только если он не закодирован
 	encodedPassword := url.QueryEscape(password)
 
 	// Пересобираем URL

@@ -1,9 +1,10 @@
 package db
 
 import (
-	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"geografi-cheb/backend/models"
+	"net/url"
 	"os"
 
 	"gorm.io/driver/postgres"
@@ -15,32 +16,49 @@ import (
 func Init(databaseURL string) (*gorm.DB, error) {
 	// Проверяем наличие SSL сертификата
 	sslCertPath := os.Getenv("PGSSLROOTCERT")
+	
+	// Если сертификат указан, загружаем его и настраиваем SSL
 	if sslCertPath != "" {
-		// Загружаем SSL сертификат
+		// Проверяем существование файла
+		if _, err := os.Stat(sslCertPath); err != nil {
+			return nil, err
+		}
+
+		// Загружаем SSL сертификат для проверки валидности
 		rootCert, err := os.ReadFile(sslCertPath)
 		if err != nil {
 			return nil, err
 		}
 
-		// Создаем пул сертификатов
+		// Проверяем валидность сертификата
 		caCertPool := x509.NewCertPool()
 		if !caCertPool.AppendCertsFromPEM(rootCert) {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse SSL certificate from %s", sslCertPath)
 		}
 
-		// Настраиваем TLS конфигурацию (хотя lib/pq использует переменную окружения)
-		_ = &tls.Config{
-			RootCAs: caCertPool,
-		}
-
-		// lib/pq автоматически использует переменную окружения PGSSLROOTCERT
-		// поэтому просто убеждаемся, что она установлена
+		// Устанавливаем переменную окружения для pgx
+		// pgx автоматически использует PGSSLROOTCERT для SSL подключения
 		os.Setenv("PGSSLROOTCERT", sslCertPath)
+
+		// Убеждаемся, что в строке подключения указан sslmode=verify-full
+		parsedURL, err := url.Parse(databaseURL)
+		if err == nil {
+			query := parsedURL.Query()
+			sslmode := query.Get("sslmode")
+			if sslmode == "" || sslmode == "disable" {
+				query.Set("sslmode", "verify-full")
+				parsedURL.RawQuery = query.Encode()
+				databaseURL = parsedURL.String()
+			}
+		}
 	}
 
-	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{
+	// Настраиваем GORM конфигурацию
+	config := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
-	})
+	}
+
+	db, err := gorm.Open(postgres.Open(databaseURL), config)
 	if err != nil {
 		return nil, err
 	}
