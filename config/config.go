@@ -57,6 +57,13 @@ func Load() *Config {
 // 2) Набор переменных POSTGRESQL_* (как на Timeweb Cloud)
 // 3) Локальный дефолт для разработки.
 func getDatabaseURL() string {
+	// В production на сервере Timeweb жёстко используем проверенную строку подключения.
+	// Это убирает всю зависимость от переменных окружения для БД.
+	if os.Getenv("ENVIRONMENT") == "production" {
+		// Пароль полностью URL‑кодирован: h^M+4+kjXnm(VH -> h%5EM%2B4%2BkjXnm%28VH
+		return "postgresql://gen_user:h%5EM%2B4%2BkjXnm%28VH@77.233.221.83:5432/default_db"
+	}
+
 	// 1. Явно заданный DATABASE_URL
 	if raw := getEnv("DATABASE_URL", ""); raw != "" {
 		return encodeDatabaseURL(raw)
