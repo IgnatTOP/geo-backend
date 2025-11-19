@@ -39,9 +39,7 @@ func Load() *Config {
 	os.MkdirAll(uploadDir+"/practices", 0755)
 	os.MkdirAll(uploadDir+"/reports", 0755)
 
-	databaseURL := getEnv("DATABASE_URL", "postgres://postgres:123@localhost:5432/geografi_cheb?sslmode=disable")
-	// URL-кодируем пароль в строке подключения, если он содержит специальные символы
-	databaseURL = encodeDatabaseURL(databaseURL)
+	databaseURL := getDatabaseURL()
 
 	return &Config{
 		Port:           getEnv("PORT", "8080"),
@@ -53,9 +51,71 @@ func Load() *Config {
 	}
 }
 
+// getDatabaseURL строит строку подключения к БД на основе переменных окружения.
+// Приоритет:
+// 1) DATABASE_URL (как есть, с автоматическим кодированием пароля)
+// 2) Набор переменных POSTGRESQL_* (как на Timeweb Cloud)
+// 3) Локальный дефолт для разработки.
+func getDatabaseURL() string {
+	// 1. Явно заданный DATABASE_URL
+	if raw := getEnv("DATABASE_URL", ""); raw != "" {
+		return encodeDatabaseURL(raw)
+	}
+
+	// 2. Сборка URL из POSTGRESQL_* (Timeweb)
+	host := os.Getenv("POSTGRESQL_HOST")
+	if host == "" {
+		host = os.Getenv("POSTGRESQL_Host")
+	}
+	port := os.Getenv("POSTGRESQL_PORT")
+	if port == "" {
+		port = "5432"
+	}
+	user := os.Getenv("POSTGRESQL_USER")
+	if user == "" {
+		user = os.Getenv("POSTGRESQL_USERNAME")
+	}
+	password := os.Getenv("POSTGRESQL_PASSWORD")
+	dbName := os.Getenv("POSTGRESQL_DATABASE")
+	if dbName == "" {
+		// Поддерживаем имя переменной, которое часто отдает Timeweb: POSTGRESQL_DBNAME
+		dbName = os.Getenv("POSTGRESQL_DBNAME")
+	}
+
+	if host != "" && user != "" && password != "" && dbName != "" {
+		encodedPassword := url.QueryEscape(password)
+		sslmode := os.Getenv("POSTGRESQL_SSLMODE")
+		if sslmode == "" {
+			// По требованию убираем работу с кастомными сертификатами.
+			// Если БД требует SSL, на Timeweb обычно достаточно sslmode=require.
+			sslmode = "require"
+		}
+
+		return fmt.Sprintf(
+			"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
+			user,
+			encodedPassword,
+			host,
+			port,
+			dbName,
+			sslmode,
+		)
+	}
+
+	// 3. Локальный дефолт
+	return "postgres://postgres:123@localhost:5432/geografi_cheb?sslmode=disable"
+}
+
 func getAllowedOrigins() []string {
 	defaultOrigins := "https://ignattop-geo-frontend-27ae.twc1.net,http://localhost:3000"
-	raw := getEnv("ALLOWED_ORIGINS", defaultOrigins)
+	// Поддерживаем оба варианта имени переменной: ALLOWED_ORIGINS и ALLOWED_ORIGIN
+	raw := os.Getenv("ALLOWED_ORIGINS")
+	if raw == "" {
+		raw = os.Getenv("ALLOWED_ORIGIN")
+	}
+	if raw == "" {
+		raw = defaultOrigins
+	}
 
 	// If env var is explicitly set to empty, use default instead
 	if raw == "" {

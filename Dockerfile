@@ -28,6 +28,9 @@ WORKDIR /root/
 # Копируем бинарник из builder
 COPY --from=builder /app/main .
 
+# Копируем SSL сертификат для подключения к БД
+COPY --from=builder /app/certs ./certs
+
 # Копируем директорию для загрузок (если нужно)
 RUN mkdir -p uploads/images uploads/documents uploads/videos uploads/practices uploads/reports
 
