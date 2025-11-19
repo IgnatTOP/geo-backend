@@ -54,10 +54,14 @@ func Load() *Config {
 }
 
 func getAllowedOrigins() []string {
-	raw := getEnv("ALLOWED_ORIGINS", "https://ignattop-geo-frontend-27ae.twc1.net,http://localhost:3000")
+	defaultOrigins := "https://ignattop-geo-frontend-27ae.twc1.net,http://localhost:3000"
+	raw := getEnv("ALLOWED_ORIGINS", defaultOrigins)
+
+	// If env var is explicitly set to empty, use default instead
 	if raw == "" {
-		return []string{}
+		raw = defaultOrigins
 	}
+
 	parts := strings.Split(raw, ",")
 	var origins []string
 	for _, p := range parts {
@@ -65,6 +69,17 @@ func getAllowedOrigins() []string {
 			origins = append(origins, trimmed)
 		}
 	}
+
+	// If no valid origins found, use default
+	if len(origins) == 0 {
+		parts = strings.Split(defaultOrigins, ",")
+		for _, p := range parts {
+			if trimmed := strings.TrimSpace(p); trimmed != "" {
+				origins = append(origins, trimmed)
+			}
+		}
+	}
+
 	return origins
 }
 

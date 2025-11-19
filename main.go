@@ -33,6 +33,7 @@ import (
 func main() {
 	// Загрузка конфигурации
 	cfg := config.Load()
+	log.Printf("CORS: Allowed origins: %v", cfg.AllowedOrigins)
 
 	// Инициализация базы данных
 	database, err := db.Init(cfg.DatabaseURL)
@@ -54,15 +55,25 @@ func main() {
 	// CORS middleware
 	router.Use(func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
-		if allowed := resolveAllowedOrigin(origin, cfg.AllowedOrigins); allowed != "" {
+		allowed := resolveAllowedOrigin(origin, cfg.AllowedOrigins)
+		
+		// Set CORS headers if origin is allowed
+		if allowed != "" {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", allowed)
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+			c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
 		}
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
 
+		// Handle preflight requests
 		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
+			if allowed != "" {
+				c.AbortWithStatus(204)
+			} else {
+				// Log for debugging (remove in production if needed)
+				log.Printf("CORS: Origin '%s' not allowed. Allowed origins: %v", origin, cfg.AllowedOrigins)
+				c.AbortWithStatus(403)
+			}
 			return
 		}
 
