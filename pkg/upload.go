@@ -12,6 +12,12 @@ import (
 
 // UploadFile загружает файл и возвращает URL для доступа к нему
 func UploadFile(file *multipart.FileHeader, uploadDir string, subdir string) (string, error) {
+	// Проверяем размер файла (максимум 100MB)
+	const maxFileSize = 100 * 1024 * 1024
+	if file.Size > maxFileSize {
+		return "", fmt.Errorf("размер файла превышает максимальный лимит в 100MB")
+	}
+
 	// Открываем файл
 	src, err := file.Open()
 	if err != nil {
@@ -25,9 +31,10 @@ func UploadFile(file *multipart.FileHeader, uploadDir string, subdir string) (st
 		ext = ".bin"
 	}
 
-	// Генерируем уникальное имя файла
+	// Генерируем уникальное имя файла (убираем расширение из оригинального имени)
 	timestamp := time.Now().Unix()
-	filename := fmt.Sprintf("%d_%s%s", timestamp, sanitizeFilename(file.Filename), ext)
+	originalName := strings.TrimSuffix(file.Filename, ext)
+	filename := fmt.Sprintf("%d_%s%s", timestamp, sanitizeFilename(originalName), ext)
 	
 	// Создаем путь для сохранения
 	dir := filepath.Join(uploadDir, subdir)

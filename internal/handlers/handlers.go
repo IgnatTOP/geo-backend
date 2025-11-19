@@ -30,9 +30,9 @@ func NewHandlers(db *gorm.DB, cfg *config.Config) *Handlers {
 
 // RegisterRequest структура запроса регистрации
 type RegisterRequest struct {
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
+	Name     string `json:"name" binding:"required,min=2,max=100"`
+	Email    string `json:"email" binding:"required,email,max=255"`
+	Password string `json:"password" binding:"required,min=6,max=100"`
 }
 
 // LoginRequest структура запроса входа
@@ -178,7 +178,11 @@ func (h *Handlers) GetCurrentUser(c *gin.Context) {
 // @Failure 404 {object} map[string]string
 // @Router /users/{id} [get]
 func (h *Handlers) GetUser(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID пользователя"})
+		return
+	}
 	
 	var user models.User
 	if err := h.DB.First(&user, id).Error; err != nil {
@@ -214,7 +218,11 @@ func (h *Handlers) GetLessons(c *gin.Context) {
 // @Failure 404 {object} map[string]string
 // @Router /lessons/{id} [get]
 func (h *Handlers) GetLesson(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID урока"})
+		return
+	}
 	
 	var lesson models.Lesson
 	if err := h.DB.Preload("Reports").Preload("Practices").Preload("Videos").Preload("Tests").Preload("Tests.Questions").First(&lesson, id).Error; err != nil {
@@ -253,7 +261,11 @@ func (h *Handlers) CreateLesson(c *gin.Context) {
 
 // UpdateLesson обновляет урок (только для админа)
 func (h *Handlers) UpdateLesson(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID урока"})
+		return
+	}
 	
 	var lesson models.Lesson
 	if err := h.DB.First(&lesson, id).Error; err != nil {
@@ -266,14 +278,32 @@ func (h *Handlers) UpdateLesson(c *gin.Context) {
 		return
 	}
 
-	h.DB.Save(&lesson)
+	if err := h.DB.Save(&lesson).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обновления урока"})
+		return
+	}
 	c.JSON(http.StatusOK, lesson)
 }
 
 // DeleteLesson удаляет урок (только для админа)
 func (h *Handlers) DeleteLesson(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
-	h.DB.Delete(&models.Lesson{}, id)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID урока"})
+		return
+	}
+	
+	// Проверяем, существует ли урок
+	var lesson models.Lesson
+	if err := h.DB.First(&lesson, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Урок не найден"})
+		return
+	}
+	
+	if err := h.DB.Delete(&models.Lesson{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка удаления урока"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "Урок удален"})
 }
 
@@ -286,7 +316,11 @@ func (h *Handlers) GetReports(c *gin.Context) {
 
 // GetReport возвращает доклад по ID
 func (h *Handlers) GetReport(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID доклада"})
+		return
+	}
 	
 	var report models.Report
 	if err := h.DB.Preload("User").Preload("Lesson").First(&report, id).Error; err != nil {
@@ -372,7 +406,11 @@ func (h *Handlers) GetTests(c *gin.Context) {
 
 // GetTest возвращает тест по ID
 func (h *Handlers) GetTest(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID теста"})
+		return
+	}
 	
 	var test models.Test
 	if err := h.DB.Preload("Lesson").Preload("Questions").First(&test, id).Error; err != nil {
@@ -761,7 +799,11 @@ func (h *Handlers) GetPractices(c *gin.Context) {
 
 // GetPractice возвращает практическое задание по ID
 func (h *Handlers) GetPractice(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID практического задания"})
+		return
+	}
 	
 	var practice models.Practice
 	if err := h.DB.Preload("Lesson").First(&practice, id).Error; err != nil {
@@ -985,7 +1027,11 @@ func (h *Handlers) GetFacts(c *gin.Context) {
 
 // GetFact возвращает факт по ID
 func (h *Handlers) GetFact(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID факта"})
+		return
+	}
 	
 	var fact models.Fact
 	if err := h.DB.First(&fact, id).Error; err != nil {
@@ -1047,7 +1093,11 @@ func (h *Handlers) GetVideos(c *gin.Context) {
 
 // GetVideo возвращает видеоматериал по ID
 func (h *Handlers) GetVideo(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID видео"})
+		return
+	}
 	
 	var video models.Video
 	if err := h.DB.Preload("Lesson").First(&video, id).Error; err != nil {
