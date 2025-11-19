@@ -1,0 +1,345 @@
+/* Переменные для цветов, размеров и стилей */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* СВЕТЛАЯ ТЕМА - Премиальная изумрудная палитра */
+    /* Основные цвета */
+    --background: 150 25% 98%; /* Легкий мятный оттенок */
+    --foreground: 158 64% 15%; /* Глубокий изумрудный текст */
+    
+    /* Карточки */
+    --card: 0 0% 100%; /* Чистый белый для контраста */
+    --card-foreground: 158 64% 15%;
+    
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 158 64% 15%;
+    
+    /* Основной цвет - живой изумрудный */
+    --primary: 158 64% 52%; /* Современный изумрудный (Emerald) */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Вторичный цвет - нефритовый */
+    --secondary: 160 35% 92%; /* Светлый нефритовый */
+    --secondary-foreground: 158 64% 15%;
+    
+    /* Приглушенный */
+    --muted: 155 20% 94%; /* Мягкий мятный */
+    --muted-foreground: 158 30% 42%; /* Приглушенный изумрудный */
+    
+    /* Акцент - яркий тропический зеленый */
+    --accent: 152 76% 48%; /* Яркий весенний зеленый */
+    --accent-foreground: 0 0% 100%;
+    
+    /* Деструктивный (ошибки) - коралловый */
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Границы */
+    --border: 156 22% 86%; /* Мягкие изумрудные границы */
+    --input: 156 22% 86%;
+    --ring: 158 64% 52%; /* Изумрудное кольцо фокуса */
+    
+    /* Радиус скругления */
+    --radius: 0.875rem;
+    
+    /* Дополнительные цвета для градиентов */
+    --gradient-from: 158 64% 52%; /* Изумрудный */
+    --gradient-via: 152 76% 48%; /* Весенний зеленый */
+    --gradient-to: 142 71% 45%; /* Глубокий изумрудный */
+    
+    --success: 142 71% 45%; /* Лесной зеленый */
+    --warning: 32 95% 58%; /* Янтарный */
+    --info: 199 89% 56%; /* Небесный голубой */
+    --purple: 271 81% 56%; /* Фиолетовый акцент */
+    
+    /* Расширенная палитра */
+    --surface-elevated: 0 0% 100%;
+    --surface-sunken: 155 15% 96%;
+    --overlay: 0 0% 0%;
+    --overlay-opacity: 0.4;
+  }
+
+  .dark {
+    /* ТЕМНАЯ ТЕМА - Премиальная изумрудная палитра */
+    /* Основные цвета */
+    --background: 158 28% 8%; /* Глубокий изумрудно-черный */
+    --foreground: 150 25% 96%; /* Почти белый с мятным оттенком */
+    
+    /* Карточки */
+    --card: 156 24% 11%; /* Темно-изумрудные карточки */
+    --card-foreground: 150 25% 96%;
+    
+    /* Popover */
+    --popover: 156 24% 11%;
+    --popover-foreground: 150 25% 96%;
+    
+    /* Основной цвет - светящийся изумрудный */
+    --primary: 158 64% 58%; /* Яркий светящийся изумрудный */
+    --primary-foreground: 158 64% 8%;
+    
+    /* Вторичный цвет */
+    --secondary: 156 20% 18%; /* Темный изумрудный */
+    --secondary-foreground: 150 25% 96%;
+    
+    /* Приглушенный */
+    --muted: 156 18% 14%; /* Глубокий приглушенный фон */
+    --muted-foreground: 150 15% 65%; /* Средний светлый текст */
+    
+    /* Акцент - неоново-зеленый */
+    --accent: 152 76% 55%; /* Яркий неоновый акцент */
+    --accent-foreground: 0 0% 100%;
+    
+    /* Деструктивный (ошибки) */
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Границы */
+    --border: 156 15% 22%; /* Видимые темные границы */
+    --input: 156 15% 22%;
+    --ring: 158 64% 58%; /* Светящееся изумрудное кольцо */
+    
+    /* Дополнительные цвета для градиентов */
+    --gradient-from: 158 64% 58%; /* Яркий изумрудный */
+    --gradient-via: 152 76% 55%; /* Неоновый зеленый */
+    --gradient-to: 142 71% 50%; /* Глубокий изумрудный */
+    
+    --success: 142 71% 50%;
+    --warning: 32 95% 58%;
+    --info: 199 89% 56%;
+    --purple: 271 81% 66%;
+    
+    /* Расширенная палитра */
+    --surface-elevated: 156 20% 13%;
+    --surface-sunken: 158 24% 6%;
+    --overlay: 0 0% 0%;
+    --overlay-opacity: 0.6;
+  }
+}
+
+/* Современные градиенты и эффекты */
+@layer utilities {
+  /* Основные градиенты */
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--gradient-to)) 100%);
+  }
+  
+  .gradient-vibrant {
+    background: linear-gradient(135deg, 
+      hsl(var(--gradient-from)) 0%, 
+      hsl(var(--gradient-via)) 50%, 
+      hsl(var(--gradient-to)) 100%);
+  }
+  
+  .gradient-card {
+    background: linear-gradient(135deg, 
+      hsl(var(--card)) 0%, 
+      hsl(var(--secondary) / 0.3) 100%);
+  }
+  
+  .gradient-mesh {
+    background: 
+      radial-gradient(at 0% 0%, hsl(var(--primary) / 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsl(var(--accent) / 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsl(var(--gradient-to) / 0.12) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsl(var(--primary) / 0.08) 0px, transparent 50%);
+  }
+  
+  /* Тени с цветом */
+  .shadow-glow {
+    box-shadow: 
+      0 0 25px hsl(var(--primary) / 0.15),
+      0 8px 16px hsl(var(--primary) / 0.1);
+  }
+  
+  .shadow-glow-strong {
+    box-shadow: 
+      0 0 40px hsl(var(--primary) / 0.25),
+      0 12px 24px hsl(var(--primary) / 0.15);
+  }
+  
+  .shadow-glow-hover:hover {
+    box-shadow: 
+      0 0 35px hsl(var(--primary) / 0.25),
+      0 12px 28px hsl(var(--primary) / 0.18);
+    transition: box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .shadow-elevated {
+    box-shadow: 
+      0 10px 15px -3px hsl(var(--foreground) / 0.08),
+      0 4px 6px -4px hsl(var(--foreground) / 0.05);
+  }
+  
+  /* Карточки с эффектами */
+  .card-hover {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 
+      0 20px 25px -5px hsl(var(--foreground) / 0.1),
+      0 8px 10px -6px hsl(var(--foreground) / 0.05);
+  }
+  
+  .card-glow-hover:hover {
+    box-shadow: 
+      0 0 30px hsl(var(--primary) / 0.2),
+      0 15px 30px hsl(var(--primary) / 0.12);
+    border-color: hsl(var(--primary) / 0.5);
+  }
+  
+  /* Текстовые эффекты */
+  .text-gradient {
+    background: linear-gradient(135deg, 
+      hsl(var(--gradient-from)) 0%, 
+      hsl(var(--gradient-via)) 50%, 
+      hsl(var(--gradient-to)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .text-glow {
+    color: hsl(var(--primary));
+    text-shadow: 0 0 20px hsl(var(--primary) / 0.4);
+  }
+  
+  /* Стеклянный эффект */
+  .glass {
+    background: hsl(var(--card) / 0.75);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid hsl(var(--border) / 0.4);
+  }
+  
+  .glass-strong {
+    background: hsl(var(--card) / 0.85);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+  
+  /* Эффекты наложения */
+  .overlay {
+    position: relative;
+  }
+  
+  .overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: hsl(var(--overlay) / var(--overlay-opacity));
+    pointer-events: none;
+  }
+  
+  /* Borders с градиентом */
+  .border-gradient {
+    border: 2px solid transparent;
+    background-image: 
+      linear-gradient(hsl(var(--background)), hsl(var(--background))),
+      linear-gradient(135deg, hsl(var(--primary)), hsl(var(--gradient-to)));
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+  }
+  
+  /* Анимированные фоны */
+  .animated-gradient {
+    background: linear-gradient(
+      -45deg,
+      hsl(var(--gradient-from)),
+      hsl(var(--gradient-via)),
+      hsl(var(--gradient-to)),
+      hsl(var(--primary))
+    );
+    background-size: 400% 400%;
+    animation: gradient-shift 15s ease infinite;
+  }
+  
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  
+  /* Пульсирующее свечение */
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
+    }
+    50% {
+      box-shadow: 0 0 40px hsl(var(--primary) / 0.4);
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Кастомные переменные для размеров */
+:root {
+  /* Spacing */
+  --spacing-xs: 0.25rem;    /* 4px */
+  --spacing-sm: 0.5rem;     /* 8px */
+  --spacing-md: 1rem;       /* 16px */
+  --spacing-lg: 1.5rem;     /* 24px */
+  --spacing-xl: 2rem;       /* 32px */
+  --spacing-2xl: 3rem;      /* 48px */
+  --spacing-3xl: 4rem;      /* 64px */
+  
+  /* Font sizes */
+  --font-size-xs: 0.75rem;   /* 12px */
+  --font-size-sm: 0.875rem;  /* 14px */
+  --font-size-base: 1rem;    /* 16px */
+  --font-size-lg: 1.125rem;  /* 18px */
+  --font-size-xl: 1.25rem;   /* 20px */
+  --font-size-2xl: 1.5rem;   /* 24px */
+  --font-size-3xl: 1.875rem; /* 30px */
+  --font-size-4xl: 2.25rem;  /* 36px */
+  --font-size-5xl: 3rem;     /* 48px */
+  
+  /* Font weights */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Тени с цветовыми оттенками */
+  --shadow-sm: 0 1px 2px 0 hsl(var(--foreground) / 0.05);
+  --shadow-md: 0 4px 6px -1px hsl(var(--foreground) / 0.1), 
+               0 2px 4px -2px hsl(var(--foreground) / 0.05);
+  --shadow-lg: 0 10px 15px -3px hsl(var(--foreground) / 0.1), 
+               0 4px 6px -4px hsl(var(--foreground) / 0.05);
+  --shadow-xl: 0 20px 25px -5px hsl(var(--foreground) / 0.1), 
+               0 8px 10px -6px hsl(var(--foreground) / 0.05);
+  --shadow-2xl: 0 25px 50px -12px hsl(var(--foreground) / 0.15);
+  
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Z-index layers */
+  --z-base: 0;
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-fixed: 1200;
+  --z-modal-backdrop: 1300;
+  --z-modal: 1400;
+  --z-popover: 1500;
+  --z-tooltip: 1600;
+}
