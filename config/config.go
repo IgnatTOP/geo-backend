@@ -1,9 +1,12 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -19,13 +22,86 @@ type Config struct {
 	AllowedOrigins []string // Разрешенные источники для CORS
 }
 
+// loadEnvFile загружает .env файл, удаляя BOM если он присутствует
+func loadEnvFile(filename string) error {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	// Удаляем UTF-8 BOM (Byte Order Mark) если он присутствует
+	data = bytes.TrimPrefix(data, []byte("\xef\xbb\xbf"))
+
+	// Парсим содержимое файла
+	envMap, err := godotenv.Parse(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+
+	// Устанавливаем переменные окружения
+	for key, value := range envMap {
+		os.Setenv(key, value)
+	}
+
+	return nil
+}
+
 // Load загружает конфигурацию из переменных окружения
 func Load() *Config {
-	// Загружаем .env файл если он существует
-	// Пробуем загрузить из текущей директории и из директории backend
-	_ = godotenv.Load()
-	_ = godotenv.Load("../.env")
-	_ = godotenv.Load(".env")
+	// Загружаем .env файлы, если они существуют.
+	// Сначала из корня проекта, потом из backend — чтобы локальный backend/.env переопределял общий .env.
+
+	// Получаем текущую рабочую директорию
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Printf("Warning: не удалось получить рабочую директорию: %v", err)
+		wd = "."
+	}
+
+	log.Printf("Текущая рабочая директория: %s", wd)
+
+	// Пробуем загрузить .env из корня проекта (на уровень выше) - сначала
+	rootEnv := filepath.Join(wd, "..", ".env")
+	if _, err := os.Stat(rootEnv); err == nil {
+		if err := loadEnvFile(rootEnv); err == nil {
+			log.Printf("Загружен .env файл из корня: %s", rootEnv)
+		} else {
+			log.Printf("Ошибка загрузки .env из корня: %v", err)
+		}
+	}
+
+	// Пробуем загрузить .env из текущей директории (backend/.env) - переопределяет корневой
+	localEnv := filepath.Join(wd, ".env")
+	if _, err := os.Stat(localEnv); err == nil {
+		if err := loadEnvFile(localEnv); err == nil {
+			log.Printf("Загружен .env файл из backend: %s", localEnv)
+		} else {
+			log.Printf("Ошибка загрузки .env из backend: %v", err)
+		}
+	} else {
+		log.Printf("Файл .env не найден в: %s", localEnv)
+	}
+
+	// Fallback: пробуем относительные пути (на случай если Getwd() вернул неправильный путь)
+	if _, err := os.Stat(".env"); err == nil {
+		_ = loadEnvFile(".env")
+	}
+	if _, err := os.Stat("../.env"); err == nil {
+		_ = loadEnvFile("../.env")
+	}
+
+	// Отладочный вывод: проверяем, загрузились ли переменные
+	log.Printf("Проверка переменных окружения:")
+	log.Printf("  POSTGRESQL_HOST: %s", os.Getenv("POSTGRESQL_HOST"))
+	log.Printf("  POSTGRESQL_PORT: %s", os.Getenv("POSTGRESQL_PORT"))
+	log.Printf("  POSTGRESQL_USER: %s", os.Getenv("POSTGRESQL_USER"))
+	pwd := os.Getenv("POSTGRESQL_PASSWORD")
+	if pwd != "" {
+		log.Printf("  POSTGRESQL_PASSWORD: ***установлен***")
+	} else {
+		log.Printf("  POSTGRESQL_PASSWORD: не установлен")
+	}
+	log.Printf("  POSTGRESQL_DBNAME: %s", os.Getenv("POSTGRESQL_DBNAME"))
 
 	uploadDir := getEnv("UPLOAD_DIR", "./uploads")
 	// Создаем директорию если её нет
@@ -51,66 +127,44 @@ func Load() *Config {
 	}
 }
 
-// getDatabaseURL строит строку подключения к БД на основе переменных окружения.
-// Приоритет:
-// 1) DATABASE_URL (как есть, с автоматическим кодированием пароля)
-// 2) Набор переменных POSTGRESQL_* (как на Timeweb Cloud)
-// 3) Локальный дефолт для разработки.
 func getDatabaseURL() string {
-	// В production на сервере Timeweb жёстко используем проверенную строку подключения.
-	// Это убирает всю зависимость от переменных окружения для БД.
-	if os.Getenv("ENVIRONMENT") == "production" {
-		// Пароль полностью URL‑кодирован: h^M+4+kjXnm(VH -> h%5EM%2B4%2BkjXnm%28VH
-		return "postgresql://gen_user:h%5EM%2B4%2BkjXnm%28VH@77.233.221.83:5432/default_db"
-	}
-
-	// 1. Явно заданный DATABASE_URL
-	if raw := getEnv("DATABASE_URL", ""); raw != "" {
-		return encodeDatabaseURL(raw)
-	}
-
-	// 2. Сборка URL из POSTGRESQL_* (Timeweb)
+	// Новая простая логика: подключаемся только по POSTGRESQL_* переменным.
 	host := os.Getenv("POSTGRESQL_HOST")
-	if host == "" {
-		host = os.Getenv("POSTGRESQL_Host")
-	}
 	port := os.Getenv("POSTGRESQL_PORT")
-	if port == "" {
-		port = "5432"
-	}
 	user := os.Getenv("POSTGRESQL_USER")
-	if user == "" {
-		user = os.Getenv("POSTGRESQL_USERNAME")
-	}
 	password := os.Getenv("POSTGRESQL_PASSWORD")
-	dbName := os.Getenv("POSTGRESQL_DATABASE")
+	dbName := os.Getenv("POSTGRESQL_DBNAME")
+
+	missing := make([]string, 0)
+	if host == "" {
+		missing = append(missing, "POSTGRESQL_HOST")
+	}
+	if port == "" {
+		missing = append(missing, "POSTGRESQL_PORT")
+	}
+	if user == "" {
+		missing = append(missing, "POSTGRESQL_USER")
+	}
+	if password == "" {
+		missing = append(missing, "POSTGRESQL_PASSWORD")
+	}
 	if dbName == "" {
-		// Поддерживаем имя переменной, которое часто отдает Timeweb: POSTGRESQL_DBNAME
-		dbName = os.Getenv("POSTGRESQL_DBNAME")
+		missing = append(missing, "POSTGRESQL_DBNAME")
 	}
 
-	if host != "" && user != "" && password != "" && dbName != "" {
-		encodedPassword := url.QueryEscape(password)
-		sslmode := os.Getenv("POSTGRESQL_SSLMODE")
-		if sslmode == "" {
-			// По требованию убираем работу с кастомными сертификатами.
-			// Если БД требует SSL, на Timeweb обычно достаточно sslmode=require.
-			sslmode = "require"
-		}
-
-		return fmt.Sprintf(
-			"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
-			user,
-			encodedPassword,
-			host,
-			port,
-			dbName,
-			sslmode,
-		)
+	if len(missing) > 0 {
+		panic(fmt.Sprintf("database config error: missing env vars: %s", strings.Join(missing, ", ")))
 	}
 
-	// 3. Локальный дефолт
-	return "postgres://postgres:123@localhost:5432/geografi_cheb?sslmode=disable"
+	encodedPassword := url.QueryEscape(password)
+	return fmt.Sprintf(
+		"postgresql://%s:%s@%s:%s/%s",
+		user,
+		encodedPassword,
+		host,
+		port,
+		dbName,
+	)
 }
 
 func getAllowedOrigins() []string {
@@ -155,74 +209,4 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
-}
-
-// encodeDatabaseURL правильно кодирует пароль в строке подключения к БД
-func encodeDatabaseURL(databaseURL string) string {
-	// Пытаемся распарсить URL
-	parsedURL, err := url.Parse(databaseURL)
-	if err != nil {
-		// Если не удалось распарсить из-за некорректных символов в пароле,
-		// разбираем строку вручную
-		return encodeDatabaseURLManual(databaseURL)
-	}
-
-	// Если пароль уже закодирован или его нет, возвращаем как есть
-	if parsedURL.User == nil {
-		return databaseURL
-	}
-
-	password, hasPassword := parsedURL.User.Password()
-	if !hasPassword {
-		return databaseURL
-	}
-
-	// Кодируем пароль для использования в URL
-	encodedPassword := url.QueryEscape(password)
-
-	// Пересобираем URL с закодированным паролем
-	parsedURL.User = url.UserPassword(parsedURL.User.Username(), encodedPassword)
-
-	return parsedURL.String()
-}
-
-// encodeDatabaseURLManual разбирает строку подключения вручную и кодирует пароль
-func encodeDatabaseURLManual(databaseURL string) string {
-	// Формат: postgres://user:password@host:port/db?params
-	if !strings.HasPrefix(databaseURL, "postgres://") && !strings.HasPrefix(databaseURL, "postgresql://") {
-		return databaseURL
-	}
-
-	// Находим позицию @ (разделитель между userinfo и host)
-	atPos := strings.Index(databaseURL, "@")
-	if atPos == -1 {
-		return databaseURL
-	}
-
-	// Извлекаем часть до @ (userinfo)
-	userinfo := databaseURL[strings.Index(databaseURL, "://")+3 : atPos]
-	rest := databaseURL[atPos:]
-
-	// Разделяем userinfo на username и password
-	colonPos := strings.Index(userinfo, ":")
-	if colonPos == -1 {
-		return databaseURL
-	}
-
-	username := userinfo[:colonPos]
-	password := userinfo[colonPos+1:]
-
-	// Проверяем, закодирован ли пароль уже (содержит ли % символы URL-кодирования)
-	// Если пароль уже закодирован, не кодируем его снова
-	if decodedPassword, err := url.QueryUnescape(password); err == nil && decodedPassword != password {
-		// Пароль уже закодирован, возвращаем как есть
-		return databaseURL
-	}
-
-	// Кодируем пароль только если он не закодирован
-	encodedPassword := url.QueryEscape(password)
-
-	// Пересобираем URL
-	prefix := databaseURL[:strings.Index(databaseURL, "://")+3]
-	return fmt.Sprintf("%s%s:%s%s", prefix, username, encodedPassword, rest)
 }

@@ -42,4 +42,3 @@ func RunMigrations(db *gorm.DB) error {
 		&models.Video{},
 	)
 }
-
