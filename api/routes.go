@@ -51,16 +51,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 				lessons.GET("/:id", h.GetLesson)
 			}
 
-			// Доклады
-			reports := protected.Group("/reports")
-			{
-				reports.GET("", h.GetReports)
-				reports.GET("/:id", h.GetReport)
-				reports.POST("", h.CreateReport)
-				reports.PUT("/:id", h.UpdateReport)
-				reports.DELETE("/:id", h.DeleteReport)
-			}
-
 			// Тесты
 			tests := protected.Group("/tests")
 			{

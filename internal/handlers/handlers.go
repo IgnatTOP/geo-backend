@@ -315,96 +315,6 @@ func (h *Handlers) DeleteLesson(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Урок удален"})
 }
 
-// GetReports возвращает список докладов
-func (h *Handlers) GetReports(c *gin.Context) {
-	var reports []models.Report
-	h.DB.Preload("User").Preload("Lesson").Find(&reports)
-	c.JSON(http.StatusOK, reports)
-}
-
-// GetReport возвращает доклад по ID
-func (h *Handlers) GetReport(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil || id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID доклада"})
-		return
-	}
-	
-	var report models.Report
-	if err := h.DB.Preload("User").Preload("Lesson").First(&report, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Доклад не найден"})
-		return
-	}
-
-	c.JSON(http.StatusOK, report)
-}
-
-// CreateReport создает новый доклад
-func (h *Handlers) CreateReport(c *gin.Context) {
-	userID, _ := c.Get("user_id")
-	
-	var report models.Report
-	if err := c.ShouldBindJSON(&report); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	report.UserID = userID.(uint)
-	if err := h.DB.Create(&report).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка создания доклада"})
-		return
-	}
-
-	c.JSON(http.StatusCreated, report)
-}
-
-// UpdateReport обновляет доклад
-func (h *Handlers) UpdateReport(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
-	userID, _ := c.Get("user_id")
-	
-	var report models.Report
-	if err := h.DB.First(&report, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Доклад не найден"})
-		return
-	}
-
-	// Проверяем, что пользователь является владельцем
-	if report.UserID != userID.(uint) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Нет доступа к этому докладу"})
-		return
-	}
-
-	if err := c.ShouldBindJSON(&report); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	h.DB.Save(&report)
-	c.JSON(http.StatusOK, report)
-}
-
-// DeleteReport удаляет доклад
-func (h *Handlers) DeleteReport(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
-	userID, _ := c.Get("user_id")
-	
-	var report models.Report
-	if err := h.DB.First(&report, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Доклад не найден"})
-		return
-	}
-
-	// Проверяем, что пользователь является владельцем
-	if report.UserID != userID.(uint) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Нет доступа к этому докладу"})
-		return
-	}
-
-	h.DB.Delete(&report)
-	c.JSON(http.StatusOK, gin.H{"message": "Доклад удален"})
-}
-
 // GetTests возвращает список тестов
 func (h *Handlers) GetTests(c *gin.Context) {
 	var tests []models.Test
@@ -734,12 +644,12 @@ func (h *Handlers) GetAllTestAttempts(c *gin.Context) {
 type CreateTestGradeRequest struct {
 	UserID    uint    `json:"user_id" binding:"required"`
 	TestID    uint    `json:"test_id" binding:"required"`
-	AttemptID uint    `json:"attempt_id"`
+	AttemptID *uint   `json:"attempt_id"`
 	Grade     float64 `json:"grade" binding:"required"`
 	Comment   string  `json:"comment"`
 }
 
-// CreateTestGrade создает оценку теста (только для админа)
+// CreateTestGrade создает или обновляет оценку теста (только для админа)
 func (h *Handlers) CreateTestGrade(c *gin.Context) {
 	var req CreateTestGradeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -747,12 +657,37 @@ func (h *Handlers) CreateTestGrade(c *gin.Context) {
 		return
 	}
 
+	// Проверяем, существует ли уже оценка для этого пользователя и теста
+	var existingGrade models.TestGrade
+	err := h.DB.Where("user_id = ? AND test_id = ?", req.UserID, req.TestID).First(&existingGrade).Error
+	
+	if err == nil {
+		// Оценка найдена - обновляем её
+		existingGrade.Grade = req.Grade
+		existingGrade.Comment = req.Comment
+		if req.AttemptID != nil {
+			existingGrade.AttemptID = *req.AttemptID
+		}
+		
+		if err := h.DB.Save(&existingGrade).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка обновления оценки"})
+			return
+		}
+		
+		c.JSON(http.StatusOK, existingGrade)
+		return
+	}
+
+	// Оценка не найдена - создаем новую
 	grade := models.TestGrade{
-		UserID:    req.UserID,
-		TestID:    req.TestID,
-		AttemptID: req.AttemptID,
-		Grade:     req.Grade,
-		Comment:   req.Comment,
+		UserID:  req.UserID,
+		TestID:  req.TestID,
+		Grade:   req.Grade,
+		Comment: req.Comment,
+	}
+	
+	if req.AttemptID != nil {
+		grade.AttemptID = *req.AttemptID
 	}
 
 	if err := h.DB.Create(&grade).Error; err != nil {
@@ -935,12 +870,12 @@ func (h *Handlers) GetAllPracticeSubmits(c *gin.Context) {
 type CreatePracticeGradeRequest struct {
 	UserID     uint    `json:"user_id" binding:"required"`
 	PracticeID uint    `json:"practice_id" binding:"required"`
-	SubmitID   uint    `json:"submit_id"`
+	SubmitID   *uint   `json:"submit_id"`
 	Grade      float64 `json:"grade" binding:"required"`
 	Comment    string  `json:"comment"`
 }
 
-// CreatePracticeGrade создает оценку практического задания (только для админа)
+// CreatePracticeGrade создает или обновляет оценку практического задания (только для админа)
 func (h *Handlers) CreatePracticeGrade(c *gin.Context) {
 	var req CreatePracticeGradeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -948,12 +883,37 @@ func (h *Handlers) CreatePracticeGrade(c *gin.Context) {
 		return
 	}
 
+	// Проверяем, существует ли уже оценка для этого пользователя и практики
+	var existingGrade models.PracticeGrade
+	err := h.DB.Where("user_id = ? AND practice_id = ?", req.UserID, req.PracticeID).First(&existingGrade).Error
+	
+	if err == nil {
+		// Оценка найдена - обновляем её
+		existingGrade.Grade = req.Grade
+		existingGrade.Comment = req.Comment
+		if req.SubmitID != nil {
+			existingGrade.SubmitID = *req.SubmitID
+		}
+		
+		if err := h.DB.Save(&existingGrade).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка обновления оценки"})
+			return
+		}
+		
+		c.JSON(http.StatusOK, existingGrade)
+		return
+	}
+
+	// Оценка не найдена - создаем новую
 	grade := models.PracticeGrade{
 		UserID:     req.UserID,
 		PracticeID: req.PracticeID,
-		SubmitID:   req.SubmitID,
 		Grade:      req.Grade,
 		Comment:    req.Comment,
+	}
+	
+	if req.SubmitID != nil {
+		grade.SubmitID = *req.SubmitID
 	}
 
 	if err := h.DB.Create(&grade).Error; err != nil {
