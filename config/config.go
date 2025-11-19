@@ -11,11 +11,12 @@ import (
 
 // Config содержит конфигурацию приложения
 type Config struct {
-	Port        string
-	DatabaseURL string
-	JWTSecret   string
-	Environment string
-	UploadDir   string // Директория для загрузки файлов
+	Port           string
+	DatabaseURL    string
+	JWTSecret      string
+	Environment    string
+	UploadDir      string   // Директория для загрузки файлов
+	AllowedOrigins []string // Разрешенные источники для CORS
 }
 
 // Load загружает конфигурацию из переменных окружения
@@ -43,12 +44,28 @@ func Load() *Config {
 	databaseURL = encodeDatabaseURL(databaseURL)
 
 	return &Config{
-		Port:        getEnv("PORT", "8080"),
-		DatabaseURL: databaseURL,
-		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
-		Environment: getEnv("ENVIRONMENT", "development"),
-		UploadDir:   uploadDir,
+		Port:           getEnv("PORT", "8080"),
+		DatabaseURL:    databaseURL,
+		JWTSecret:      getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		Environment:    getEnv("ENVIRONMENT", "development"),
+		UploadDir:      uploadDir,
+		AllowedOrigins: getAllowedOrigins(),
 	}
+}
+
+func getAllowedOrigins() []string {
+	raw := getEnv("ALLOWED_ORIGINS", "https://ignattop-geo-frontend-27ae.twc1.net,http://localhost:3000")
+	if raw == "" {
+		return []string{}
+	}
+	parts := strings.Split(raw, ",")
+	var origins []string
+	for _, p := range parts {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			origins = append(origins, trimmed)
+		}
+	}
+	return origins
 }
 
 func getEnv(key, defaultValue string) string {
@@ -120,4 +137,3 @@ func encodeDatabaseURLManual(databaseURL string) string {
 	prefix := databaseURL[:strings.Index(databaseURL, "://")+3]
 	return fmt.Sprintf("%s%s:%s%s", prefix, username, encodedPassword, rest)
 }
-
