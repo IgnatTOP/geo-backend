@@ -86,8 +86,16 @@ func (h *Handlers) Register(c *gin.Context) {
 		return
 	}
 
+	// Генерируем токен для автоматического входа после регистрации
+	token, err := pkg.GenerateToken(user.ID, user.Email, user.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка генерации токена"})
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Пользователь успешно зарегистрирован",
+		"token": token,
 		"user": gin.H{
 			"id":    user.ID,
 			"name":  user.Name,
